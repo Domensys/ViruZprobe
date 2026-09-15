@@ -545,7 +545,9 @@
         try {
             const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
             if (saved) {
-                updateStatus(`📌 Загрузите файл "${saved.fileName}" для продолжения с предложения #${saved.sentenceIndex + 1}`, 'info');
+                // Автоматически открываем диалог выбора файла
+                document.getElementById('textFile').click();
+                updateStatus(`📌 Выберите файл "${saved.fileName}" для продолжения с предложения #${saved.sentenceIndex + 1}`, 'info');
             }
         } catch(e) {}
     }
@@ -756,10 +758,12 @@
                 if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 200);
             
-            // Автоматически начинаем чтение с сохранённой позиции
+            // Автоматически начинаем чтение с сохранённой позиции через 1 секунду
             setTimeout(() => {
-                updateStatus(`📌 Позиция восстановлена: предложение #${startIndex + 1}. Нажмите "Read" для продолжения.`, 'success');
-            }, 500);
+                updateStatus(`📌 Позиция восстановлена: предложение #${startIndex + 1}. Начинаю чтение...`, 'success');
+                // Автоматически начинаем чтение
+                startSpeech();
+            }, 1000);
         } else {
             updateStatus('✅ Готово! 💡 Одинарный клик — пауза, двойной — продолжить с этого места', 'success');
         }
