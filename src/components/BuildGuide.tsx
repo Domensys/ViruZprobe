@@ -10,6 +10,22 @@ function BuildGuide() {
     setTimeout(() => setCopiedBlock(null), 2000);
   };
 
+  const downloadFile = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      // Fallback: открыть в новой вкладке
+      window.open(url, '_blank');
+    }
+  };
+
   const steps = [
     {
       title: 'Подготовка окружения',
@@ -809,53 +825,102 @@ adb install app-release.apk
         ))}
       </div>
 
-      {/* Download Full HTML */}
-      <div className="bg-gradient-to-r from-purple-900/50 to-indigo-900/50 border border-purple-500/30 rounded-xl p-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
+      {/* Important Notice */}
+      <div className="bg-gradient-to-r from-amber-900/40 to-orange-900/40 border border-amber-500/30 rounded-xl p-5 mb-6">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl">⚠️</span>
           <div>
-            <h3 className="text-lg font-bold text-white mb-1">📄 Готовый HTML-файл</h3>
-            <p className="text-gray-400 text-sm">
-              Скачайте модифицированный HTML-файл и поместите в папку <code className="text-purple-300">www/</code>
+            <h3 className="font-bold text-amber-200 mb-1">Важно: APK нельзя собрать в браузере</h3>
+            <p className="text-amber-200/80 text-sm">
+              Для сборки APK нужны <strong>Android SDK, JDK и Gradle</strong> — они устанавливаются на ваш компьютер.
+              Ниже я подготовил <strong>полностью готовый проект</strong> — скачайте его и соберите APK локально за 5 минут.
             </p>
           </div>
-          <button
-            onClick={() => {
-              const blob = new Blob([fullHTML], { type: 'text/html' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'index.html';
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-            className="px-6 py-3 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold transition-colors flex items-center gap-2"
-          >
-            💾 Скачать index.html
-          </button>
         </div>
+      </div>
+
+      {/* Download Full Project */}
+      <div className="bg-gradient-to-r from-purple-900/50 to-indigo-900/50 border border-purple-500/30 rounded-xl p-6 mb-4">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h3 className="text-lg font-bold text-white mb-1">📦 Скачать готовый проект</h3>
+            <p className="text-gray-400 text-sm">
+              Все файлы для сборки APK — HTML, конфиг, скрипты. Скачайте и следуйте инструкции.
+            </p>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => downloadFile('/apk-project/www/index.html', 'index.html')}
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
+            >
+              📄 HTML
+            </button>
+            <button
+              onClick={() => downloadFile('/apk-project/capacitor.config.json', 'capacitor.config.json')}
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
+            >
+              ⚙️ Config
+            </button>
+            <button
+              onClick={() => downloadFile('/apk-project/package.json', 'package.json')}
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
+            >
+              📦 Package
+            </button>
+            <button
+              onClick={() => downloadFile('/apk-project/README.md', 'README.md')}
+              className="px-4 py-2.5 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
+            >
+              📖 Инструкция
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Structure Preview */}
+      <div className="bg-gray-800 rounded-xl border border-gray-700 p-5 mb-6">
+        <h3 className="text-sm font-bold text-gray-300 mb-3">📁 Структура проекта после скачивания:</h3>
+        <pre className="text-sm text-green-300 font-mono bg-gray-900 rounded-lg p-4 overflow-x-auto">
+{`apk-project/
+├── www/
+│   └── index.html           ← ваш ридер (с модификациями)
+├── capacitor.config.json     ← настройки Capacitor
+├── package.json              ← зависимости
+├── build-apk.sh              ← скрипт для Mac/Linux
+├── build-apk.bat             ← скрипт для Windows
+└── README.md                 ← полная инструкция`}
+        </pre>
       </div>
 
       {/* Quick Summary */}
       <div className="mt-8 bg-gray-800 rounded-xl border border-gray-700 p-6">
         <h3 className="text-lg font-bold text-white mb-4">🚀 Быстрый старт (TL;DR)</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-gray-900 rounded-lg p-4">
-            <h4 className="font-bold text-green-400 mb-2">Что нужно:</h4>
+            <h4 className="font-bold text-green-400 mb-2">1. Установите:</h4>
             <ul className="text-sm text-gray-300 space-y-1">
-              <li>✅ Node.js 18+</li>
-              <li>✅ Android Studio</li>
-              <li>✅ Ваш HTML-файл</li>
-              <li>✅ 15 минут времени</li>
+              <li>✅ <a href="https://nodejs.org" target="_blank" className="text-blue-400 underline">Node.js 18+</a></li>
+              <li>✅ <a href="https://developer.android.com/studio" target="_blank" className="text-blue-400 underline">Android Studio</a></li>
+              <li>✅ <a href="https://adoptium.net" target="_blank" className="text-blue-400 underline">Java JDK 17+</a></li>
             </ul>
           </div>
           <div className="bg-gray-900 rounded-lg p-4">
-            <h4 className="font-bold text-blue-400 mb-2">Команды:</h4>
+            <h4 className="font-bold text-blue-400 mb-2">2. Скачайте файлы</h4>
+            <p className="text-sm text-gray-300 mb-2">Нажмите кнопки выше для скачивания всех файлов проекта</p>
+            <p className="text-xs text-gray-500">Создайте папку и поместите файлы в неё</p>
+          </div>
+          <div className="bg-gray-900 rounded-lg p-4">
+            <h4 className="font-bold text-purple-400 mb-2">3. Соберите APK:</h4>
             <pre className="text-xs text-green-300 font-mono overflow-x-auto">
-{`npm init -y
-npm i @capacitor/core @capacitor/cli
-npx cap init "Reader" "com.reader.app"
-mkdir www && cp index.html www/
-npm i @capacitor/android
+{`# Linux/Mac:
+chmod +x build-apk.sh
+./build-apk.sh
+
+# Windows:
+build-apk.bat
+
+# Или вручную:
+npm install
 npx cap add android
 npx cap sync
 npx cap open android`}
