@@ -743,7 +743,7 @@
             }, 200);
         }
 
-        updateStatus('✅ Перевод завершён!', 'success');
+        updateStatus('✅ Перевод завершён! 💡 Клик — остановить, двойной клик — начать чтение с этого места', 'success');
         document.getElementById('savedBanner').classList.remove('active');
     }
 
@@ -770,8 +770,10 @@
                 wordSpan.dataset.sidx = sIdx;
                 wordSpan.dataset.widx = wIdx;
                 wordSpan.textContent = w + ' ';
-                // 🟢 КЛИК = остановка + зелёная подсветка
+                // 🟢 ОДИНОЧНЫЙ КЛИК = остановка + зелёная подсветка
                 wordSpan.onclick = (e) => { e.stopPropagation(); onWordClick(sIdx, wIdx); };
+                // ⏩ ДВОЙНОЙ КЛИК = начать чтение с этого слова
+                wordSpan.ondblclick = (e) => { e.stopPropagation(); e.preventDefault(); onWordDoubleClick(sIdx, wIdx); };
                 sentSpanEN.appendChild(wordSpan);
                 wordElementsEN.push(wordSpan);
             });
@@ -781,6 +783,35 @@
             sentSpanRU.className = 'sentence-wrap';
             sentSpanRU.id = `sent-ru-${sIdx}`;
             transEl.appendChild(sentSpanRU);
+        });
+
+        // Поддержка двойного тапа для мобильных устройств
+        setupDoubleTap();
+    }
+
+    // ===== ПОДДЕРЖКА ДВОЙНОГО ТАПА ДЛЯ МОБИЛЬНЫХ =====
+    function setupDoubleTap() {
+        let lastTapTime = 0;
+        let lastTapTarget = null;
+        const DOUBLE_TAP_DELAY = 300; // мс между тапами
+
+        document.getElementById('originalContent').addEventListener('touchend', (e) => {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTapTime;
+            const target = e.target;
+
+            if (target.classList.contains('word') && lastTapTarget === target && tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
+                // Двойной тап обнаружен
+                e.preventDefault();
+                const sIdx = parseInt(target.dataset.sidx);
+                const wIdx = parseInt(target.dataset.widx);
+                onWordDoubleClick(sIdx, wIdx);
+                lastTapTime = 0;
+                lastTapTarget = null;
+            } else {
+                lastTapTime = currentTime;
+                lastTapTarget = target;
+            }
         });
     }
 
@@ -863,6 +894,52 @@
         // 8. Сохранить позицию
         savePosition();
         updateStatus(`⏹ Остановлено на слове: "${wordText}"`, 'info');
+    }
+
+    // ===== ⏩ ДВОЙНОЙ КЛИК: НАЧАТЬ ЧТЕНИЕ С ЭТОГО СЛОВА =====
+    function onWordDoubleClick(sIdx, wIdx) {
+        // 1. Остановить текущее чтение (не помечать текущее предложение как прочитанное)
+        stopSpeech(false);
+
+        // 2. Убрать зелёную подсветку (если была)
+        document.querySelectorAll('.word.clicked').forEach(el => el.classList.remove('clicked'));
+        document.getElementById('wordInfoPanel').classList.remove('active');
+        clickedWordData = null;
+
+        // 3. Пометить все предложения до sIdx как прочитанные (жёлтый фон)
+        for (let i = 0; i < sIdx; i++) {
+            markSentenceAsRead(i);
+        }
+
+        // 💛 Убрать жёлтый фон с предложений после sIdx
+        for (let i = sIdx; i < sentencesEN.length; i++) {
+            wordElementsEN.filter(el => parseInt(el.dataset.sidx) === i).forEach(el => {
+                el.classList.remove('read');
+            });
+            wordElementsRU.filter(el => parseInt(el.dataset.sidx) === i).forEach(el => {
+                el.classList.remove('read');
+            });
+        }
+
+        // 4. Установить текущую позицию
+        currentSentenceIndex = sIdx;
+
+        // 5. Скроллить к этому предложению
+        const targetWord = document.querySelector(`#sent-en-${sIdx} .word[data-widx="${wIdx}"]`);
+        if (targetWord) {
+            targetWord.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // 6. Начать чтение с этого предложения
+        isSpeaking = true;
+        speakNext();
+
+        // 7. Сохранить позицию
+        savePosition();
+
+        const enWords = sentencesEN[sIdx]?.trim().split(/\s+/) || [];
+        const wordText = enWords[wIdx] || '—';
+        updateStatus(`⏩ Чтение начато со слова: "${wordText}" (предложение ${sIdx + 1})`, 'success');
     }
 
     // ===== ПРОДОЛЖИТЬ ЧТЕНИЕ ПОСЛЕ КЛИКА =====
@@ -1008,7 +1085,7 @@
         });
     }
 
-    function stopSpeech() {
+    function stopSpeech(markCurrentAsRead = true) {
         const wasSpeaking = isSpeaking;
         isSpeaking = false;
         if (synth.speaking || synth.paused) {
@@ -1017,7 +1094,7 @@
         document.querySelectorAll('.word.active').forEach(el => el.classList.remove('active'));
         
         // 💛 Если мы слушали текст, помечаем текущее предложение как прочитанное
-        if (wasSpeaking && currentSentenceIndex < sentencesEN.length) {
+        if (markCurrentAsRead && wasSpeaking && currentSentenceIndex < sentencesEN.length) {
             markSentenceAsRead(currentSentenceIndex);
         }
         
