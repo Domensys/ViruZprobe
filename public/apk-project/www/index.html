@@ -816,14 +816,29 @@
         // 2. Убрать предыдущую зелёную подсветку
         document.querySelectorAll('.word.clicked').forEach(el => el.classList.remove('clicked'));
 
-        // 3. Подсветить нажатое слово в EN зелёным
+        // 3. Пометить все предложения до sIdx как прочитанные (жёлтый фон)
+        for (let i = 0; i < sIdx; i++) {
+            markSentenceAsRead(i);
+        }
+
+        // 💛 Убрать жёлтый фон с предложений после sIdx (если пользователь вернулся назад)
+        for (let i = sIdx; i < sentencesEN.length; i++) {
+            wordElementsEN.filter(el => parseInt(el.dataset.sidx) === i).forEach(el => {
+                el.classList.remove('read');
+            });
+            wordElementsRU.filter(el => parseInt(el.dataset.sidx) === i).forEach(el => {
+                el.classList.remove('read');
+            });
+        }
+
+        // 4. Подсветить нажатое слово в EN зелёным
         const enWord = document.querySelector(`#sent-en-${sIdx} .word[data-widx="${wIdx}"]`);
         if (enWord) {
             enWord.classList.add('clicked');
             enWord.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // 4. Подсветить соответствующее слово в RU зелёным
+        // 5. Подсветить соответствующее слово в RU зелёным
         const enWords = sentencesEN[sIdx]?.trim().split(/\s+/) || [];
         const ruContainer = document.getElementById(`sent-ru-${sIdx}`);
         if (ruContainer) {
@@ -836,16 +851,16 @@
             }
         }
 
-        // 5. Сохранить данные о выбранном слове
+        // 6. Сохранить данные о выбранном слове
         clickedWordData = { sIdx, wIdx };
         currentSentenceIndex = sIdx;
 
-        // 6. Показать инфо-панель
+        // 7. Показать инфо-панель
         const wordText = enWords[wIdx] || '—';
         document.getElementById('clickedWordText').textContent = `"${wordText}" (предложение ${sIdx + 1})`;
         document.getElementById('wordInfoPanel').classList.add('active');
 
-        // 7. Сохранить позицию
+        // 8. Сохранить позицию
         savePosition();
         updateStatus(`⏹ Остановлено на слове: "${wordText}"`, 'info');
     }
@@ -871,11 +886,23 @@
             return;
         }
 
+        const wasSpeaking = isSpeaking;
         stopSpeech();
+        
         // Убираем зелёную подсветку при старте
         document.querySelectorAll('.word.clicked').forEach(el => el.classList.remove('clicked'));
         document.getElementById('wordInfoPanel').classList.remove('active');
         clickedWordData = null;
+
+        // 💛 Если мы начинаем чтение заново (не продолжаем), убираем жёлтый фон с текущего предложения
+        if (!wasSpeaking && currentSentenceIndex < sentencesEN.length) {
+            wordElementsEN.filter(el => parseInt(el.dataset.sidx) === currentSentenceIndex).forEach(el => {
+                el.classList.remove('read');
+            });
+            wordElementsRU.filter(el => parseInt(el.dataset.sidx) === currentSentenceIndex).forEach(el => {
+                el.classList.remove('read');
+            });
+        }
 
         isSpeaking = true;
         speakNext();
@@ -971,20 +998,29 @@
     function markSentenceAsRead(sentenceIdx) {
         wordElementsEN.filter(el => parseInt(el.dataset.sidx) === sentenceIdx).forEach(el => {
             el.classList.remove('active');
+            // Не убираем .clicked — зелёная подсветка должна остаться
             el.classList.add('read');
         });
         wordElementsRU.filter(el => parseInt(el.dataset.sidx) === sentenceIdx).forEach(el => {
-            el.classList.remove('active', 'clicked');
+            el.classList.remove('active');
+            // Не убираем .clicked — зелёная подсветка должна остаться
             el.classList.add('read');
         });
     }
 
     function stopSpeech() {
+        const wasSpeaking = isSpeaking;
         isSpeaking = false;
         if (synth.speaking || synth.paused) {
             synth.cancel();
         }
         document.querySelectorAll('.word.active').forEach(el => el.classList.remove('active'));
+        
+        // 💛 Если мы слушали текст, помечаем текущее предложение как прочитанное
+        if (wasSpeaking && currentSentenceIndex < sentencesEN.length) {
+            markSentenceAsRead(currentSentenceIndex);
+        }
+        
         savePosition(); // 💾 Сохраняем позицию при остановке
     }
 
