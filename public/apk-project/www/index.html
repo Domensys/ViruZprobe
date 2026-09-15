@@ -483,8 +483,9 @@
     let currentFileName = '';
     let clickedWordData = null; // {sIdx, wIdx}
     
-    let wordElementsEN = [];
-    let wordElementsRU = [];
+    // Оптимизированные структуры данных для быстрого доступа к словам по индексу предложения
+    let wordsBySentenceEN = {}; // {sentenceIdx: [wordElement1, wordElement2, ...]}
+    let wordsBySentenceRU = {}; // {sentenceIdx: [wordElement1, wordElement2, ...]}
 
     const STORAGE_KEY = 'parallel_reader_position_v2';
     const delay = ms => new Promise(res => setTimeout(res, ms));
@@ -747,7 +748,7 @@
             }, 200);
         }
 
-        updateStatus('✅ Перевод завершён! 💡 Клик — остановить, двойной клик — начать чтение с этого места', 'success');
+        updateStatus('✅ Готово! 💡 Одинарный клик — пауза, двойной — продолжить с этого места', 'success');
         document.getElementById('savedBanner').classList.remove('active');
     }
 
@@ -758,13 +759,15 @@
         
         origEl.innerHTML = '';
         transEl.innerHTML = '';
-        wordElementsEN = [];
-        wordElementsRU = [];
+        wordsBySentenceEN = {};
+        wordsBySentenceRU = {};
 
         sentencesEN.forEach((sent, sIdx) => {
             const sentSpanEN = document.createElement('span');
             sentSpanEN.className = 'sentence-wrap';
             sentSpanEN.id = `sent-en-${sIdx}`;
+            
+            wordsBySentenceEN[sIdx] = []; // Инициализируем массив для этого предложения
             
             const wordsEN = sent.trim().split(/\s+/);
             wordsEN.forEach((w, wIdx) => {
@@ -779,13 +782,14 @@
                 // ⏩ ДВОЙНОЙ КЛИК = начать чтение с этого слова
                 wordSpan.ondblclick = (e) => { e.stopPropagation(); e.preventDefault(); onWordDoubleClick(sIdx, wIdx); };
                 sentSpanEN.appendChild(wordSpan);
-                wordElementsEN.push(wordSpan);
+                wordsBySentenceEN[sIdx].push(wordSpan);
             });
             origEl.appendChild(sentSpanEN);
 
             const sentSpanRU = document.createElement('span');
             sentSpanRU.className = 'sentence-wrap';
             sentSpanRU.id = `sent-ru-${sIdx}`;
+            wordsBySentenceRU[sIdx] = []; // Инициализируем массив для этого предложения
             transEl.appendChild(sentSpanRU);
         });
 
@@ -824,6 +828,7 @@
         if (!sentSpanRU) return;
         
         sentSpanRU.innerHTML = '';
+        wordsBySentenceRU[sIdx] = []; // Инициализируем массив для этого предложения
         const wordsRU = textRU.trim().split(/\s+/);
         
         wordsRU.forEach((w, wIdx) => {
@@ -839,7 +844,7 @@
             }
             
             sentSpanRU.appendChild(wordSpan);
-            wordElementsRU.push(wordSpan);
+            wordsBySentenceRU[sIdx].push(wordSpan);
         });
     }
 
@@ -854,46 +859,41 @@
         // 3. Убрать active со всех слов
         document.querySelectorAll('.word.active').forEach(el => el.classList.remove('active'));
 
-        // 💛 Убрать зачёркивание с предложений после sIdx (если пользователь вернулся назад)
-        for (let i = sIdx; i < sentencesEN.length; i++) {
-            wordElementsEN.filter(el => parseInt(el.dataset.sidx) === i).forEach(el => {
-                el.classList.remove('read');
-            });
-            wordElementsRU.filter(el => parseInt(el.dataset.sidx) === i).forEach(el => {
-                el.classList.remove('read');
-            });
+        // 💛 Убрать зачёркивание со всех слов (быстрая операция через querySelectorAll)
+        document.querySelectorAll('.word.read').forEach(el => el.classList.remove('read'));
+
+        // 4. Пометить все предложения до sIdx как прочитанные (зачёркнутые)
+        for (let i = 0; i < sIdx; i++) {
+            markSentenceAsRead(i);
         }
 
-        // 4. Подсветить нажатое слово в EN зелёным
-        const enWord = document.querySelector(`#sent-en-${sIdx} .word[data-widx="${wIdx}"]`);
+        // 5. Подсветить нажатое слово в EN зелёным
+        const enWords = wordsBySentenceEN[sIdx] || [];
+        const enWord = enWords[wIdx];
         if (enWord) {
             enWord.classList.add('clicked');
             enWord.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // 5. Подсветить соответствующее слово в RU зелёным
-        const enWords = sentencesEN[sIdx]?.trim().split(/\s+/) || [];
-        const ruContainer = document.getElementById(`sent-ru-${sIdx}`);
-        if (ruContainer) {
-            const ruWords = ruContainer.querySelectorAll('.word');
-            if (ruWords.length > 0) {
-                const ratio = enWords.length > 1 ? wIdx / (enWords.length - 1) : 0;
-                const ruIdx = Math.min(Math.round(ratio * (ruWords.length - 1)), ruWords.length - 1);
-                ruWords[ruIdx].classList.add('clicked');
-                ruWords[ruIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
+        // 6. Подсветить соответствующее слово в RU зелёным
+        const ruWords = wordsBySentenceRU[sIdx] || [];
+        if (ruWords.length > 0) {
+            const ratio = enWords.length > 1 ? wIdx / (enWords.length - 1) : 0;
+            const ruIdx = Math.min(Math.round(ratio * (ruWords.length - 1)), ruWords.length - 1);
+            ruWords[ruIdx].classList.add('clicked');
+            ruWords[ruIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // 6. Сохранить данные о выбранном слове
+        // 7. Сохранить данные о выбранном слове
         clickedWordData = { sIdx, wIdx };
         currentSentenceIndex = sIdx;
 
-        // 7. Показать инфо-панель
-        const wordText = enWords[wIdx] || '—';
+        // 8. Показать инфо-панель
+        const wordText = sentencesEN[sIdx]?.trim().split(/\s+/)[wIdx] || '—';
         document.getElementById('clickedWordText').textContent = `"${wordText}" (предложение ${sIdx + 1})`;
         document.getElementById('wordInfoPanel').classList.add('active');
 
-        // 8. Сохранить позицию
+        // 9. Сохранить позицию
         savePosition();
         updateStatus(`⏹ Остановлено на слове: "${wordText}"`, 'info');
     }
@@ -908,26 +908,20 @@
         document.getElementById('wordInfoPanel').classList.remove('active');
         clickedWordData = null;
 
-        // 3. Зачёркнуть все предложения до sIdx
+        // 3. Убрать зачёркивание со всех слов (быстрая операция)
+        document.querySelectorAll('.word.read').forEach(el => el.classList.remove('read'));
+
+        // 4. Зачёркнуть все предложения до sIdx
         for (let i = 0; i < sIdx; i++) {
             markSentenceAsRead(i);
-        }
-
-        // 4. Убрать зачёркивание с предложений начиная с sIdx
-        for (let i = sIdx; i < sentencesEN.length; i++) {
-            wordElementsEN.filter(el => parseInt(el.dataset.sidx) === i).forEach(el => {
-                el.classList.remove('read');
-            });
-            wordElementsRU.filter(el => parseInt(el.dataset.sidx) === i).forEach(el => {
-                el.classList.remove('read');
-            });
         }
 
         // 5. Установить текущую позицию
         currentSentenceIndex = sIdx;
 
         // 6. Скроллить к этому предложению
-        const targetWord = document.querySelector(`#sent-en-${sIdx} .word[data-widx="${wIdx}"]`);
+        const enWords = wordsBySentenceEN[sIdx] || [];
+        const targetWord = enWords[wIdx];
         if (targetWord) {
             targetWord.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
@@ -939,8 +933,7 @@
         // 8. Сохранить позицию
         savePosition();
 
-        const enWords = sentencesEN[sIdx]?.trim().split(/\s+/) || [];
-        const wordText = enWords[wIdx] || '—';
+        const wordText = sentencesEN[sIdx]?.trim().split(/\s+/)[wIdx] || '—';
         updateStatus(`⏩ Чтение начато со слова: "${wordText}" (предложение ${sIdx + 1})`, 'success');
     }
 
@@ -950,6 +943,18 @@
         document.querySelectorAll('.word.clicked').forEach(el => el.classList.remove('clicked'));
         document.getElementById('wordInfoPanel').classList.remove('active');
         clickedWordData = null;
+        
+        // Убираем зачёркивание с текущего предложения (оно будет зачёркиваться динамически)
+        if (currentSentenceIndex < sentencesEN.length) {
+            const enWords = wordsBySentenceEN[currentSentenceIndex] || [];
+            const ruWords = wordsBySentenceRU[currentSentenceIndex] || [];
+            for (let i = 0; i < enWords.length; i++) {
+                enWords[i].classList.remove('read');
+            }
+            for (let i = 0; i < ruWords.length; i++) {
+                ruWords[i].classList.remove('read');
+            }
+        }
         
         // Продолжаем чтение с текущей позиции
         isSpeaking = true;
@@ -978,12 +983,14 @@
 
         // Убираем зачёркивание с текущего предложения (оно будет зачёркиваться динамически)
         if (currentSentenceIndex < sentencesEN.length) {
-            wordElementsEN.filter(el => parseInt(el.dataset.sidx) === currentSentenceIndex).forEach(el => {
-                el.classList.remove('read');
-            });
-            wordElementsRU.filter(el => parseInt(el.dataset.sidx) === currentSentenceIndex).forEach(el => {
-                el.classList.remove('read');
-            });
+            const enWords = wordsBySentenceEN[currentSentenceIndex] || [];
+            const ruWords = wordsBySentenceRU[currentSentenceIndex] || [];
+            for (let i = 0; i < enWords.length; i++) {
+                enWords[i].classList.remove('read');
+            }
+            for (let i = 0; i < ruWords.length; i++) {
+                ruWords[i].classList.remove('read');
+            }
         }
 
         // Начинаем чтение
@@ -1038,7 +1045,10 @@
     }
 
     function highlightWordsAccurately(sentenceIdx, charIndex) {
-        const currentWordsEN = wordElementsEN.filter(el => parseInt(el.dataset.sidx) === sentenceIdx);
+        // Быстрый доступ к словам предложения через оптимизированную структуру
+        const currentWordsEN = wordsBySentenceEN[sentenceIdx] || [];
+        if (currentWordsEN.length === 0) return;
+
         let accumulatedLength = 0;
         let wordIndex = -1;
 
@@ -1054,7 +1064,9 @@
 
         if (wordIndex !== -1) {
             // Убираем active со всех слов предложения
-            currentWordsEN.forEach(el => el.classList.remove('active'));
+            for (let i = 0; i < currentWordsEN.length; i++) {
+                currentWordsEN[i].classList.remove('active');
+            }
 
             // Зачёркиваем все слова до текущего (включая его)
             for (let i = 0; i <= wordIndex; i++) {
@@ -1066,9 +1078,11 @@
             currentWordsEN[wordIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
 
             // Синхронизируем с русским текстом
-            const currentWordsRU = wordElementsRU.filter(el => parseInt(el.dataset.sidx) === sentenceIdx);
+            const currentWordsRU = wordsBySentenceRU[sentenceIdx] || [];
             if (currentWordsRU.length > 0) {
-                currentWordsRU.forEach(el => el.classList.remove('active'));
+                for (let i = 0; i < currentWordsRU.length; i++) {
+                    currentWordsRU[i].classList.remove('active');
+                }
                 
                 // Пропорциональное сопоставление слов
                 let ruWordIndex = Math.floor((wordIndex / Math.max(1, currentWordsEN.length - 1)) * (currentWordsRU.length - 1));
@@ -1087,15 +1101,19 @@
     }
 
     function markSentenceAsRead(sentenceIdx) {
+        // Быстрый доступ к словам предложения через оптимизированную структуру
+        const enWords = wordsBySentenceEN[sentenceIdx] || [];
+        const ruWords = wordsBySentenceRU[sentenceIdx] || [];
+        
         // Зачёркиваем все слова предложения
-        wordElementsEN.filter(el => parseInt(el.dataset.sidx) === sentenceIdx).forEach(el => {
-            el.classList.remove('active');
-            el.classList.add('read');
-        });
-        wordElementsRU.filter(el => parseInt(el.dataset.sidx) === sentenceIdx).forEach(el => {
-            el.classList.remove('active');
-            el.classList.add('read');
-        });
+        for (let i = 0; i < enWords.length; i++) {
+            enWords[i].classList.remove('active');
+            enWords[i].classList.add('read');
+        }
+        for (let i = 0; i < ruWords.length; i++) {
+            ruWords[i].classList.remove('active');
+            ruWords[i].classList.add('read');
+        }
     }
 
     function stopSpeech(markCurrentAsRead = true) {
@@ -1104,7 +1122,18 @@
         if (synth.speaking || synth.paused) {
             synth.cancel();
         }
-        document.querySelectorAll('.word.active').forEach(el => el.classList.remove('active'));
+        
+        // Убираем active только с текущего предложения (быстрее чем querySelectorAll)
+        if (currentSentenceIndex < sentencesEN.length) {
+            const enWords = wordsBySentenceEN[currentSentenceIndex] || [];
+            const ruWords = wordsBySentenceRU[currentSentenceIndex] || [];
+            for (let i = 0; i < enWords.length; i++) {
+                enWords[i].classList.remove('active');
+            }
+            for (let i = 0; i < ruWords.length; i++) {
+                ruWords[i].classList.remove('active');
+            }
+        }
         
         // 💛 Если мы слушали текст, помечаем текущее предложение как прочитанное
         if (markCurrentAsRead && wasSpeaking && currentSentenceIndex < sentencesEN.length) {
