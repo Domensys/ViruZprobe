@@ -352,13 +352,10 @@
             box-shadow: 0 0 6px rgba(234, 179, 8, 0.8);
         }
 
-        /* 🔵 ПРОЧИТАННЫЕ слова — зачёркивание полупрозрачным жёлтым */
+        /* 🔵 ПРОЧИТАННЫЕ слова — полупрозрачный жёлтый фон */
         .word.read {
             background-color: rgba(250, 204, 21, 0.25);
             color: inherit;
-            text-decoration: line-through;
-            text-decoration-color: rgba(250, 204, 21, 0.6);
-            text-decoration-thickness: 2px;
         }
 
         /* 🟢 ЗЕЛЁНАЯ ПОДСВЕТКА — при клике на слово (остановка) */
@@ -396,6 +393,9 @@
             <strong id="savedFileName">—</strong>
             <small id="savedPositionInfo">—</small>
         </div>
+        <button class="btn-resume" onclick="resumeFromSavedPosition()" style="background:#16a34a; color:white; border:none; padding:6px 12px; border-radius:6px; font-weight:600; font-size:12px; cursor:pointer; margin-right:8px;">
+            ▶ Продолжить
+        </button>
         <button class="close-btn" onclick="clearSavedPosition()" title="Очистить">✕</button>
     </div>
 
@@ -539,6 +539,15 @@
     function clearSavedPosition() {
         localStorage.removeItem(STORAGE_KEY);
         document.getElementById('savedBanner').classList.remove('active');
+    }
+
+    function resumeFromSavedPosition() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+            if (saved) {
+                updateStatus(`📌 Загрузите файл "${saved.fileName}" для продолжения с предложения #${saved.sentenceIndex + 1}`, 'info');
+            }
+        } catch(e) {}
     }
 
     // ===== ТЕМЫ =====
@@ -746,9 +755,15 @@
                 const el = document.getElementById(`sent-en-${startIndex}`);
                 if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 200);
+            
+            // Автоматически начинаем чтение с сохранённой позиции
+            setTimeout(() => {
+                updateStatus(`📌 Позиция восстановлена: предложение #${startIndex + 1}. Нажмите "Read" для продолжения.`, 'success');
+            }, 500);
+        } else {
+            updateStatus('✅ Готово! 💡 Одинарный клик — пауза, двойной — продолжить с этого места', 'success');
         }
-
-        updateStatus('✅ Готово! 💡 Одинарный клик — пауза, двойной — продолжить с этого места', 'success');
+        
         document.getElementById('savedBanner').classList.remove('active');
     }
 
@@ -859,10 +874,10 @@
         // 3. Убрать active со всех слов
         document.querySelectorAll('.word.active').forEach(el => el.classList.remove('active'));
 
-        // 💛 Убрать зачёркивание со всех слов (быстрая операция через querySelectorAll)
+        // 💛 Убрать заливку со всех слов (быстрая операция через querySelectorAll)
         document.querySelectorAll('.word.read').forEach(el => el.classList.remove('read'));
 
-        // 4. Пометить все предложения до sIdx как прочитанные (зачёркнутые)
+        // 4. Пометить все предложения до sIdx как прочитанные (с заливкой)
         for (let i = 0; i < sIdx; i++) {
             markSentenceAsRead(i);
         }
@@ -908,10 +923,10 @@
         document.getElementById('wordInfoPanel').classList.remove('active');
         clickedWordData = null;
 
-        // 3. Убрать зачёркивание со всех слов (быстрая операция)
+        // 3. Убрать заливку со всех слов (быстрая операция)
         document.querySelectorAll('.word.read').forEach(el => el.classList.remove('read'));
 
-        // 4. Зачёркнуть все предложения до sIdx
+        // 4. Залить все предложения до sIdx (пометить как прочитанные)
         for (let i = 0; i < sIdx; i++) {
             markSentenceAsRead(i);
         }
@@ -926,7 +941,7 @@
             targetWord.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // 7. Начать чтение с этого предложения (слова будут зачёркиваться динамически)
+        // 7. Начать чтение с этого предложения (слова будут заливаться динамически)
         isSpeaking = true;
         speakNext();
 
@@ -944,7 +959,7 @@
         document.getElementById('wordInfoPanel').classList.remove('active');
         clickedWordData = null;
         
-        // Убираем зачёркивание с текущего предложения (оно будет зачёркиваться динамически)
+        // Убираем заливку с текущего предложения (оно будет заливаться динамически)
         if (currentSentenceIndex < sentencesEN.length) {
             const enWords = wordsBySentenceEN[currentSentenceIndex] || [];
             const ruWords = wordsBySentenceRU[currentSentenceIndex] || [];
@@ -981,7 +996,7 @@
         document.getElementById('wordInfoPanel').classList.remove('active');
         clickedWordData = null;
 
-        // Убираем зачёркивание с текущего предложения (оно будет зачёркиваться динамически)
+        // Убираем заливку с текущего предложения (оно будет заливаться динамически)
         if (currentSentenceIndex < sentencesEN.length) {
             const enWords = wordsBySentenceEN[currentSentenceIndex] || [];
             const ruWords = wordsBySentenceRU[currentSentenceIndex] || [];
@@ -991,11 +1006,19 @@
             for (let i = 0; i < ruWords.length; i++) {
                 ruWords[i].classList.remove('read');
             }
+            
+            // Скроллим к текущей позиции чтения
+            const targetSentence = document.getElementById(`sent-en-${currentSentenceIndex}`);
+            if (targetSentence) {
+                targetSentence.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
 
-        // Начинаем чтение
+        // Начинаем чтение с currentSentenceIndex (сохранённой позиции)
         isSpeaking = true;
         speakNext();
+        
+        updateStatus(`▶ Чтение начато с предложения #${currentSentenceIndex + 1}`, 'success');
     }
 
     function speakNext() {
