@@ -841,39 +841,61 @@ adb install app-release.apk
 
       {/* Download Full Project */}
       <div className="bg-gradient-to-r from-purple-900/50 to-indigo-900/50 border border-purple-500/30 rounded-xl p-6 mb-4">
-        <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
           <div>
             <h3 className="text-lg font-bold text-white mb-1">📦 Скачать готовый проект</h3>
             <p className="text-gray-400 text-sm">
               Все файлы для сборки APK — HTML, конфиг, скрипты. Скачайте и следуйте инструкции.
             </p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => downloadFile('/apk-project/www/index.html', 'index.html')}
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
-            >
-              📄 HTML
-            </button>
-            <button
-              onClick={() => downloadFile('/apk-project/capacitor.config.json', 'capacitor.config.json')}
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
-            >
-              ⚙️ Config
-            </button>
-            <button
-              onClick={() => downloadFile('/apk-project/package.json', 'package.json')}
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
-            >
-              📦 Package
-            </button>
-            <button
-              onClick={() => downloadFile('/apk-project/README.md', 'README.md')}
-              className="px-4 py-2.5 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
-            >
-              📖 Инструкция
-            </button>
-          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <button
+            onClick={() => downloadFile('/apk-project/www/index.html', 'index.html')}
+            className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-bold transition-colors flex flex-col items-center gap-2"
+          >
+            <span className="text-2xl">📄</span>
+            <span>index.html</span>
+            <span className="text-xs text-indigo-200">Приложение</span>
+          </button>
+          <button
+            onClick={() => downloadFile('/apk-project/capacitor.config.json', 'capacitor.config.json')}
+            className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-bold transition-colors flex flex-col items-center gap-2"
+          >
+            <span className="text-2xl">⚙️</span>
+            <span>capacitor.config.json</span>
+            <span className="text-xs text-indigo-200">Конфигурация</span>
+          </button>
+          <button
+            onClick={() => downloadFile('/apk-project/package.json', 'package.json')}
+            className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-bold transition-colors flex flex-col items-center gap-2"
+          >
+            <span className="text-2xl">📦</span>
+            <span>package.json</span>
+            <span className="text-xs text-indigo-200">Зависимости</span>
+          </button>
+          <button
+            onClick={() => downloadFile('/apk-project/README.md', 'README.md')}
+            className="px-4 py-3 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-bold transition-colors flex flex-col items-center gap-2"
+          >
+            <span className="text-2xl">📖</span>
+            <span>README.md</span>
+            <span className="text-xs text-green-200">Инструкция</span>
+          </button>
+        </div>
+        
+        <div className="mt-4 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+          <p className="text-sm text-gray-300 mb-2">
+            <strong className="text-yellow-400">💡 Как использовать:</strong>
+          </p>
+          <ol className="text-sm text-gray-400 space-y-1 list-decimal list-inside">
+            <li>Скачайте все файлы выше</li>
+            <li>Создайте папку <code className="text-purple-300">parallel-reader</code></li>
+            <li>Поместите <code className="text-purple-300">index.html</code> в папку <code className="text-purple-300">www/</code></li>
+            <li>Поместите остальные файлы в корень папки</li>
+            <li>Откройте терминал и выполните команды из раздела «Быстрый старт»</li>
+          </ol>
         </div>
       </div>
 
@@ -926,6 +948,94 @@ npx cap sync
 npx cap open android`}
             </pre>
           </div>
+        </div>
+      </div>
+
+      {/* Final APK Build Instructions */}
+      <div className="mt-8 bg-gradient-to-r from-green-900/30 to-emerald-900/30 border border-green-500/30 rounded-xl p-6">
+        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <span>📱</span> Финальная инструкция по сборке APK
+        </h3>
+        
+        <div className="space-y-4">
+          <div className="bg-gray-900/50 rounded-lg p-4">
+            <h4 className="font-bold text-green-400 mb-2">Шаг 1: Подготовка файлов</h4>
+            <p className="text-sm text-gray-300 mb-2">Создайте структуру папок:</p>
+            <pre className="text-xs text-green-300 font-mono bg-black/30 rounded p-3 overflow-x-auto">
+{`parallel-reader/
+├── www/
+│   └── index.html              ← скачайте из раздела выше
+├── capacitor.config.json       ← скачайте из раздела выше
+├── package.json                ← скачайте из раздела выше
+└── README.md                   ← скачайте из раздела выше`}
+            </pre>
+          </div>
+
+          <div className="bg-gray-900/50 rounded-lg p-4">
+            <h4 className="font-bold text-blue-400 mb-2">Шаг 2: Установка зависимостей</h4>
+            <p className="text-sm text-gray-300 mb-2">Откройте терминал в папке проекта и выполните:</p>
+            <pre className="text-xs text-green-300 font-mono bg-black/30 rounded p-3 overflow-x-auto">
+{`cd parallel-reader
+npm install`}
+            </pre>
+          </div>
+
+          <div className="bg-gray-900/50 rounded-lg p-4">
+            <h4 className="font-bold text-purple-400 mb-2">Шаг 3: Добавление Android-платформы</h4>
+            <pre className="text-xs text-green-300 font-mono bg-black/30 rounded p-3 overflow-x-auto">
+{`npx cap add android
+npx cap sync`}
+            </pre>
+          </div>
+
+          <div className="bg-gray-900/50 rounded-lg p-4">
+            <h4 className="font-bold text-yellow-400 mb-2">Шаг 4: Открытие в Android Studio</h4>
+            <pre className="text-xs text-green-300 font-mono bg-black/30 rounded p-3 overflow-x-auto">
+{`npx cap open android`}
+            </pre>
+            <p className="text-sm text-gray-300 mt-2">
+              Дождитесь завершения синхронизации Gradle (2-5 минут)
+            </p>
+          </div>
+
+          <div className="bg-gray-900/50 rounded-lg p-4">
+            <h4 className="font-bold text-pink-400 mb-2">Шаг 5: Сборка APK</h4>
+            <p className="text-sm text-gray-300 mb-2">В Android Studio:</p>
+            <ol className="text-sm text-gray-400 space-y-1 list-decimal list-inside">
+              <li>Меню: <code className="text-pink-300">Build → Generate Signed Bundle / APK</code></li>
+              <li>Выберите <code className="text-pink-300">APK</code> → Next</li>
+              <li>Создайте новый keystore или выберите существующий</li>
+              <li>Выберите <code className="text-pink-300">release</code> → Next → Finish</li>
+            </ol>
+            <p className="text-sm text-green-400 mt-3 font-bold">
+              ✅ Результат: <code>android/app/release/app-release.apk</code>
+            </p>
+          </div>
+
+          <div className="bg-gray-900/50 rounded-lg p-4">
+            <h4 className="font-bold text-cyan-400 mb-2">Шаг 6: Установка на телефон</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+              <div className="bg-black/30 rounded p-3">
+                <p className="text-xs text-cyan-300 font-bold mb-1">Через USB:</p>
+                <p className="text-xs text-gray-400">Включите «Отладку по USB» и нажмите Run ▶ в Android Studio</p>
+              </div>
+              <div className="bg-black/30 rounded p-3">
+                <p className="text-xs text-cyan-300 font-bold mb-1">Через файл:</p>
+                <p className="text-xs text-gray-400">Скопируйте APK на телефон и установите</p>
+              </div>
+              <div className="bg-black/30 rounded p-3">
+                <p className="text-xs text-cyan-300 font-bold mb-1">Через ADB:</p>
+                <code className="text-xs text-green-300">adb install app-release.apk</code>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+          <p className="text-sm text-green-300">
+            <strong>🎉 Готово!</strong> Ваше Android-приложение «Parallel Reader» готово к использованию.
+            Все функции работают: параллельное чтение, озвучивание, сохранение позиции, клик по словам.
+          </p>
         </div>
       </div>
     </div>

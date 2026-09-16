@@ -1,40 +1,42 @@
-# 📱 Parallel Reader — Сборка APK
+# 📱 Сборка Android-приложения (APK)
 
-Готовый проект для создания Android-приложения из HTML-кода.
+## ✅ Готовые файлы проекта
 
-## 📋 Что внутри
+Все необходимые файлы уже подготовлены в папке `public/apk-project/`:
 
 ```
 apk-project/
 ├── www/
-│   └── index.html          ← HTML-файл приложения
-├── capacitor.config.json    ← Конфигурация Capacitor
-├── package.json             ← Зависимости проекта
-├── build-apk.sh             ← Скрипт для Linux/Mac
-├── build-apk.bat            ← Скрипт для Windows
-└── README.md                ← Этот файл
+│   └── index.html              ← HTML-приложение (ридер)
+├── capacitor.config.json       ← Конфигурация Capacitor
+├── package.json                ← Зависимости проекта
+├── build-apk.sh                ← Скрипт для Linux/Mac
+├── build-apk.bat               ← Скрипт для Windows
+└── README.md                   ← Эта инструкция
 ```
 
-## 🛠️ Требования
+## 🛠️ Требования для сборки
 
-Перед сборкой убедитесь, что установлены:
+Перед началом убедитесь, что установлены:
 
-1. **Node.js** (версия 18+) — https://nodejs.org
+1. **Node.js 18+** — https://nodejs.org
 2. **Android Studio** — https://developer.android.com/studio
 3. **Java JDK 17+** — https://adoptium.net
 
-## 🚀 Быстрая сборка
+## 🚀 Быстрая сборка (рекомендуется)
 
-### Способ 1: Автоматический (рекомендуется)
+### Способ 1: Автоматическая сборка
 
 **Linux/Mac:**
 ```bash
+cd public/apk-project
 chmod +x build-apk.sh
 ./build-apk.sh
 ```
 
 **Windows:**
 ```cmd
+cd public\apk-project
 build-apk.bat
 ```
 
@@ -42,34 +44,36 @@ build-apk.bat
 - Установит Capacitor
 - Добавит Android-платформу
 - Синхронизирует файлы
-- Подготовит проект для Android Studio
+- Откроет Android Studio
 
-### Способ 2: Ручной
+### Способ 2: Ручная сборка
 
 ```bash
-# 1. Установите зависимости
+# 1. Перейдите в папку проекта
+cd public/apk-project
+
+# 2. Установите зависимости
 npm install
 
-# 2. Добавьте Android-платформу
+# 3. Добавьте Android-платформу
 npx cap add android
 
-# 3. Синхронизируйте файлы
+# 4. Синхронизируйте файлы
 npx cap sync
 
-# 4. Откройте в Android Studio
+# 5. Откройте в Android Studio
 npx cap open android
 ```
 
-## 📦 Сборка APK
+## 📦 Сборка APK в Android Studio
 
-После подготовки проекта:
+После открытия проекта в Android Studio:
 
-1. **Откройте Android Studio** (через `npx cap open android`)
-2. **Дождитесь** завершения синхронизации Gradle (может занять 2-5 минут)
-3. **Соберите APK:**
+1. **Дождитесь** завершения синхронизации Gradle (2-5 минут)
+2. **Соберите APK:**
    - Меню: `Build → Generate Signed Bundle / APK`
    - Выберите `APK` → `Next`
-   - Создайте или выберите keystore
+   - Создайте новый keystore или выберите существующий
    - Выберите `release` → `Next` → `Finish`
 
 **Результат:** `android/app/release/app-release.apk`
@@ -104,21 +108,19 @@ adb install app-release.apk
 
 ## 🎯 Особенности приложения
 
-✅ **Клик по слову** — останавливает чтение и подсвечивает слово зелёным в EN и RU  
-✅ **Сохранение позиции** — автоматически сохраняет место чтения  
-✅ **Восстановление** — при повторном запуске продолжает с сохранённого места  
-✅ **Адаптивный дизайн** — удобные кнопки для тач-управления  
-✅ **Тёмная тема** — комфортное чтение  
+✅ **Параллельное чтение** — английский и русский текст одновременно  
+✅ **Озвучивание** — синтез речи с выделением текущего слова  
+✅ **Сохранение позиции** — автоматическое сохранение места чтения  
+✅ **Восстановление позиции** — продолжение с места остановки  
+✅ **Клик по слову** — остановка + зелёная подсветка слова и перевода  
+✅ **Двойной клик** — начало чтения с выбранного слова  
+✅ **Заливка прочитанного** — полупрозрачный жёлтый фон для прочитанных слов  
+✅ **Темы** — светлая, тёмная, сепия  
+✅ **Поддержка форматов** — PDF, EPUB, FB2, TXT  
 
 ## 🔧 Настройка
 
-### Изменение иконки приложения
-
-1. Создайте иконку 1024×1024 px (PNG)
-2. Поместите в `android/app/src/main/res/mipmap-*/ic_launcher.png`
-3. Или используйте плагин: `npm install @capacitor/assets`
-
-### Изменение названия
+### Изменение названия приложения
 
 Отредактируйте `capacitor.config.json`:
 ```json
@@ -132,6 +134,12 @@ adb install app-release.apk
 ```bash
 npx cap sync
 ```
+
+### Изменение иконки
+
+1. Создайте иконку 1024×1024 px (PNG)
+2. Поместите в `android/app/src/main/res/mipmap-*/ic_launcher.png`
+3. Или используйте плагин: `npm install @capacitor/assets`
 
 ## 📝 Публикация в Google Play
 
@@ -163,7 +171,6 @@ org.gradle.jvmargs=-Xmx4096m
 
 ## 📞 Поддержка
 
-Если возникли вопросы:
 - Документация Capacitor: https://capacitorjs.com/docs
 - Android Studio: https://developer.android.com/studio/intro
 
