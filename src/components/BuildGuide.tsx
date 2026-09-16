@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ZipDownloader from './ZipDownloader';
 
 function BuildGuide() {
   const [activeStep, setActiveStep] = useState(0);
@@ -777,6 +778,9 @@ adb install app-release.apk
         <h2 className="text-3xl font-bold mb-2">📱 Сборка APK из HTML</h2>
         <p className="text-gray-400">Пошаговая инструкция: от HTML-кода до Android-приложения</p>
       </div>
+
+      {/* ZIP Downloader */}
+      <ZipDownloader />
 
       {/* Steps */}
       <div className="space-y-4 mb-8">
