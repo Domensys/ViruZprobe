@@ -1,0 +1,11 @@
+The quick brown fox jumps over the lazy dog. This is a simple test file to verify that the parallel reader can correctly load and process text files.
+
+The parallel reader supports multiple file formats including PDF, EPUB, FB2, and plain text files. When you load a text file, the application will extract the text, split it into sentences, and translate each sentence from English to Russian.
+
+You can click on any word to pause the reading and see its translation highlighted in green. Double-click on a word to start reading from that position. The application automatically saves your reading position, so you can continue where you left off even after closing the app.
+
+This is the third paragraph of the test file. It contains multiple sentences to demonstrate how the parallel reader handles longer texts. Each sentence will be translated independently and displayed side by side with the original English text.
+
+The reading progress is tracked and visualized with a semi-transparent yellow background for completed sentences. The current word being read is highlighted in bright yellow, making it easy to follow along with the audio narration.
+
+Finally, this test file verifies that all the core features are working correctly: file loading, text extraction, translation, audio synthesis, word highlighting, position saving, and the user interface. If you can see this text in the parallel reader, everything is functioning as expected.

@@ -17,6 +17,7 @@ export default function ZipDownloader() {
       setProgress('Загрузка index.html...');
       const indexHtml = await fetch('/apk-project/www/index.html').then(r => r.text());
       zip.file('www/index.html', indexHtml);
+      console.log('index.html загружен, размер:', indexHtml.length);
 
       setProgress('Загрузка capacitor.config.json...');
       const capacitorConfig = await fetch('/apk-project/capacitor.config.json').then(r => r.text());

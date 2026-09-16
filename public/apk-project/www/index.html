@@ -406,7 +406,7 @@
 
         <div class="controls-content">
             <div class="upload-group">
-                <input type="file" id="textFile" accept=".pdf,.epub,.fb2,.txt" style="display:none;" onchange="processTextFile()">
+                <input type="file" id="textFile" accept=".pdf,.epub,.fb2,.txt,.text,.md,.rtf,*/*" style="display:none;" onchange="processTextFile()">
                 <button class="btn" onclick="document.getElementById('textFile').click()">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
                     Открыть
@@ -597,7 +597,11 @@
 
         const fileInput = document.getElementById('textFile');
         const file = fileInput.files[0];
-        if (!file) return;
+        
+        if (!file) {
+            updateStatus('❌ Файл не выбран. Нажмите кнопку "Открыть" и выберите файл.', 'error');
+            return;
+        }
 
         stopSpeech();
         resetCover();
@@ -605,16 +609,27 @@
         currentFileName = file.name;
 
         const ext = file.name.split('.').pop().toLowerCase();
-        updateStatus(`Чтение ${file.name}...`, 'info');
+        updateStatus(`📄 Чтение файла: ${file.name} (${(file.size / 1024).toFixed(1)} KB)...`, 'info');
+        
+        console.log('Выбран файл:', file.name, 'Расширение:', ext, 'Размер:', file.size);
 
         try {
             let extractedText = '';
             if (ext === 'pdf') extractedText = await readPdf(file);
             else if (ext === 'epub') extractedText = await readEpub(file);
             else if (ext === 'fb2') extractedText = await readFb2(file);
-            else if (ext === 'txt') extractedText = await file.text();
+            else if (ext === 'txt' || ext === 'text' || ext === 'md' || ext === 'rtf') {
+                extractedText = await file.text();
+            } else {
+                // Пробуем прочитать как текст для неизвестных расширений
+                try {
+                    extractedText = await file.text();
+                } catch (e) {
+                    throw new Error(`Неподдерживаемый формат файла: .${ext}. Поддерживаются: PDF, EPUB, FB2, TXT`);
+                }
+            }
 
-            if (!extractedText.trim()) throw new Error('Файл пуст.');
+            if (!extractedText.trim()) throw new Error('Файл пуст или не содержит текста.');
 
             // Проверяем сохранённую позицию для этого файла
             let startIndex = 0;
@@ -626,10 +641,11 @@
                 }
             } catch(e) {}
 
-            updateStatus('Перевод...', 'info');
+            updateStatus(`✅ Текст извлечён (${extractedText.length} символов). Начинаю перевод...`, 'info');
             await processAndTranslateFull(extractedText, startIndex);
         } catch (err) {
-            updateStatus(`Ошибка: ${err.message}`, 'error');
+            console.error('Ошибка обработки файла:', err);
+            updateStatus(`❌ Ошибка: ${err.message}`, 'error');
         } finally {
             isTranslating = false;
         }
