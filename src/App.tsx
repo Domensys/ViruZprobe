@@ -24,29 +24,96 @@ function App() {
                 <p className="text-xs text-gray-400">Читай, переводи, учись — Android APK</p>
               </div>
             </div>
-            <nav className="flex gap-1 bg-gray-800/80 rounded-xl p-1">
-              {[
-                { id: 'reader' as Tab, label: 'Ридер', icon: '📖' },
-                { id: 'guide' as Tab, label: 'Изменения', icon: '✅' },
-                { id: 'apk' as Tab, label: 'Сборка APK', icon: '📱' },
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                    activeTab === tab.id
-                      ? 'bg-purple-600 text-white shadow-lg'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                  }`}
-                >
-                  <span>{tab.icon}</span>
-                  <span className="hidden sm:inline">{tab.label}</span>
-                </button>
-              ))}
-            </nav>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/apk-project/www/index.html');
+                    const text = await response.text();
+                    const blob = new Blob([text], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'parallel-reader.html';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  } catch (e) {
+                    alert('Ошибка скачивания файла');
+                  }
+                }}
+                className="flex items-center gap-1.5 py-2 px-3 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-500 text-white transition-all shadow-lg"
+              >
+                <span>💾</span>
+                <span className="hidden sm:inline">Скачать HTML</span>
+              </button>
+              <nav className="flex gap-1 bg-gray-800/80 rounded-xl p-1">
+                {[
+                  { id: 'reader' as Tab, label: 'Ридер', icon: '📖' },
+                  { id: 'guide' as Tab, label: 'Изменения', icon: '✅' },
+                  { id: 'apk' as Tab, label: 'Сборка APK', icon: '📱' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-1.5 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                      activeTab === tab.id
+                        ? 'bg-purple-600 text-white shadow-lg'
+                        : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                    }`}
+                  >
+                    <span>{tab.icon}</span>
+                    <span className="hidden sm:inline">{tab.label}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
           </div>
         </div>
       </header>
+
+      {/* Quick Download Banner */}
+      <div className="bg-gradient-to-r from-green-900/50 to-emerald-900/50 border-b border-green-500/30">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🎯</span>
+              <div>
+                <p className="text-green-200 font-medium text-sm">
+                  Нужен HTML-файл для Android-приложения?
+                </p>
+                <p className="text-green-300/70 text-xs">
+                  Скачайте готовый файл со всеми функциями: ридер, перевод, озвучка, сохранение позиции
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  const response = await fetch('/apk-project/www/index.html');
+                  const text = await response.text();
+                  const blob = new Blob([text], { type: 'text/html' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'parallel-reader.html';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                } catch (e) {
+                  alert('Ошибка скачивания файла');
+                }
+              }}
+              className="px-6 py-2.5 bg-green-600 hover:bg-green-500 rounded-lg text-white font-bold text-sm transition-all shadow-lg flex items-center gap-2"
+            >
+              <span className="text-xl">💾</span>
+              <span>Скачать HTML файл</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Content */}
       <main>
