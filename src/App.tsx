@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import JSZip from 'jszip';
-import { saveAs } from 'file-saver';
 import Reader from './components/Reader';
 import BuildGuide from './components/BuildGuide';
 
@@ -74,17 +72,17 @@ function App() {
       </header>
 
       {/* Quick Download Banner */}
-      <div className="bg-gradient-to-r from-green-900/50 to-emerald-900/50 border-b border-green-500/30">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🎯</span>
+      <div className="bg-gradient-to-r from-green-600 to-emerald-600 border-b-4 border-green-400">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-4xl">💾</span>
               <div>
-                <p className="text-green-200 font-medium text-sm">
-                  Нужен HTML-файл для Android-приложения?
+                <p className="text-white font-bold text-lg">
+                  Скачать HTML-файл для Android
                 </p>
-                <p className="text-green-300/70 text-xs">
-                  Скачайте готовый файл со всеми функциями: ридер, перевод, озвучка, сохранение позиции
+                <p className="text-green-100 text-sm">
+                  Готовый файл со всеми функциями: ридер, перевод, озвучка, сохранение позиции
                 </p>
               </div>
             </div>
@@ -106,10 +104,10 @@ function App() {
                   alert('Ошибка скачивания файла');
                 }
               }}
-              className="px-6 py-2.5 bg-green-600 hover:bg-green-500 rounded-lg text-white font-bold text-sm transition-all shadow-lg flex items-center gap-2"
+              className="px-8 py-4 bg-white hover:bg-gray-100 rounded-xl text-green-700 font-bold text-lg transition-all shadow-2xl flex items-center gap-3 border-4 border-green-300"
             >
-              <span className="text-xl">💾</span>
-              <span>Скачать HTML файл</span>
+              <span className="text-3xl">⬇️</span>
+              <span>СКАЧАТЬ ФАЙЛ</span>
             </button>
           </div>
         </div>
