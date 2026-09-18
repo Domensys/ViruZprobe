@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Параллельный Ридер</title>
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#4f46e5">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #f4f6f9;
+            color: #333;
+            margin: 0;
+            padding: 8px;
+            transition: background 0.3s ease;
+            user-select: none;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 16px);
+        }
+
+        /* БАННЕР СОХРАНЁННОЙ ПОЗИЦИИ */
+        .saved-banner {
+            background: linear-gradient(135deg, #dbeafe, #e0f2fe);
+            border: 1px solid #3b82f6;
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #1e40af;
+            flex-shrink: 0;
+        }
+        .saved-banner.active { display: flex; }
+        .saved-banner .icon-saved {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .saved-banner .info {
+            flex: 1;
+            min-width: 0;
+        }
+        .saved-banner .info strong { color: #1e3a8a; }
+        .saved-banner .info small { display: block; color: #3b82f6; font-size: 11px; margin-top: 2px; }
+        .saved-banner .close-btn {
+            background: transparent;
+            border: none;
+            color: #3b82f6;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .saved-banner .close-btn:hover { background: rgba(59, 130, 246, 0.1); }
+
+        /* ИНДИКАТОР СОХРАНЕНИЯ */
+        .save-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #16a34a;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        .save-indicator.show { opacity: 1; }
+        
+        /* КОМПАКТНАЯ ПАНЕЛЬ УПРАВЛЕНИЯ */
+        .controls {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            padding: 8px 10px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            margin-bottom: 8px;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .book-cover-preview {
+            width: 36px;
+            height: 48px;
+            border-radius: 4px;
+            object-fit: cover;
+            border: 1px solid #cbd5e1;
+            background: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .controls-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .upload-group {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 6px 10px;
+            background-color: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            height: 32px;
+            white-space: nowrap;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { background-color: #9ca3af !important; opacity: 0.7; }
+        .btn-pause { background-color: #f59e0b; }
+        .btn-stop { background-color: #ef4444; }
+        .btn-bg { background-color: #0284c7; padding: 6px 8px; }
+        
+        .control-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            background: #f8fafc;
+            padding: 2px 6px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            height: 32px;
+        }
+
+        .control-item select {
+            border: none;
+            background: transparent;
+            font-size: 12px;
+            outline: none;
+            color: #333;
+        }
+
+        .status {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            display: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .status.info { background: #e0f2fe; color: #0369a1; display: block; }
+        .status.success { background: #dcfce7; color: #15803d; display: block; }
+        .status.error { background: #fee2e2; color: #b91c1c; display: block; }
+
+        /* ИНФО-ПАНЕЛЬ ВЫБРАННОГО СЛОВА */
+        .word-info-panel {
+            background: linear-gradient(135deg, #dcfce7, #d1fae5);
+            border: 1px solid #22c55e;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 13px;
+            color: #14532d;
+            flex-shrink: 0;
+        }
+        .word-info-panel.active { display: flex; }
+        .word-info-panel .word-text { font-weight: 700; color: #166534; }
+        .word-info-panel .btn-resume {
+            background: #16a34a;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .word-info-panel .btn-resume:active { transform: scale(0.97); }
+
+        /* ОСНОВНАЯ ОБЛАСТЬ ЧТЕНИЯ */
+        #output {
+            display: flex;
+            flex: 1;
+            gap: 8px;
+            min-height: 0;
+            flex-direction: column;
+        }
+
+        @media (min-width: 768px) {
+            #output {
+                flex-direction: row;
+            }
+            .controls {
+                padding: 10px 14px;
+                gap: 12px;
+            }
+            .book-cover-preview {
+                width: 48px;
+                height: 64px;
+            }
+            .btn {
+                padding: 8px 12px;
+                font-size: 13px;
+                height: 36px;
+            }
+            .control-item {
+                height: 36px;
+                font-size: 12px;
+                padding: 4px 8px;
+            }
+        }
+
+        .text-container {
+            flex: 1;
+            height: 100%;
+            overflow-y: auto;
+            padding: 12px;
+            border: 1px solid rgba(229, 231, 235, 0.8);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(4px);
+            line-height: 1.6;
+            font-size: 15px;
+            user-select: text;
+        }
+
+        .text-container h3 {
+            margin: 0 0 8px 0;
+            font-size: 13px;
+            position: sticky;
+            top: -12px;
+            background: inherit;
+            padding: 4px 0;
+            border-bottom: 1px solid #e2e8f0;
+            z-index: 5;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ТЕМЫ */
+        body.theme-dark { background: #0f172a; }
+        body.theme-dark .text-container {
+            background: rgba(30, 41, 59, 0.94);
+            color: #f1f5f9;
+            border-color: #334155;
+        }
+        body.theme-dark .text-container h3 {
+            border-color: #334155;
+            color: #94a3b8;
+        }
+        body.theme-dark .controls {
+            background: rgba(30, 41, 59, 0.98);
+            border-color: #334155;
+        }
+        body.theme-dark .control-item {
+            background: #1e293b;
+            border-color: #334155;
+            color: #e2e8f0;
+        }
+        body.theme-dark .control-item select { color: #e2e8f0; }
+        body.theme-dark .saved-banner {
+            background: linear-gradient(135deg, #1e3a5f, #1e293b);
+            border-color: #3b82f6;
+            color: #93c5fd;
+        }
+        body.theme-dark .saved-banner .info strong { color: #bfdbfe; }
+        body.theme-dark .word-info-panel {
+            background: linear-gradient(135deg, #14532d, #166534);
+            border-color: #22c55e;
+            color: #dcfce7;
+        }
+        body.theme-dark .word-info-panel .word-text { color: #86efac; }
+
+        body.theme-sepia { background: #f5e6d3; }
+        body.theme-sepia .text-container {
+            background: rgba(253, 246, 227, 0.95);
+            color: #433422;
+            border-color: #e6d7b8;
+        }
+        body.theme-sepia .text-container h3 {
+            border-color: #e6d7b8;
+            color: #8c765c;
+        }
+        body.theme-sepia .controls {
+            background: rgba(253, 246, 227, 0.98);
+            border-color: #e6d7b8;
+        }
+        
+        .word {
+            display: inline;
+            padding: 1px 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+        .word:hover { background-color: #cbd5e1; }
+        body.theme-dark .word:hover { background-color: #475569; }
+
+        /* 🟡 ЖЁЛТАЯ ПОДСВЕТКА — текущее слово при чтении */
+        .word.active {
+            background-color: #facc15 !important;
+            color: #000 !important;
+            font-weight: 600;
+            box-shadow: 0 0 6px rgba(234, 179, 8, 0.8);
+        }
+
+        /* 🔵 ПРОЧИТАННЫЕ слова — полупрозрачный жёлтый фон */
+        .word.read {
+            background-color: rgba(250, 204, 21, 0.25);
+            color: inherit;
+        }
+
+        /* 🟢 ЗЕЛЁНАЯ ПОДСВЕТКА — при клике на слово (остановка) */
+        .word.clicked {
+            background-color: rgba(34, 197, 94, 0.45) !important;
+            color: inherit !important;
+            font-weight: 700;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+            border-radius: 4px;
+            text-decoration: none !important; /* Убираем зачёркивание при зелёной подсветке */
+        }
+
+        .sentence-wrap {
+            display: inline;
+            margin-right: 4px;
+        }
+        
+        .icon {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Индикатор сохранения -->
+    <div id="saveIndicator" class="save-indicator">💾 Сохранено</div>
+
+    <!-- Баннер сохранённой позиции -->
+    <div id="savedBanner" class="saved-banner">
+        <span class="icon-saved">📌</span>
+        <div class="info">
+            <strong id="savedFileName">—</strong>
+            <small id="savedPositionInfo">—</small>
+        </div>
+        <button class="btn-resume" onclick="resumeFromSavedPosition()" style="background:#16a34a; color:white; border:none; padding:6px 12px; border-radius:6px; font-weight:600; font-size:12px; cursor:pointer; margin-right:8px;">
+            ▶ Продолжить
+        </button>
+        <button class="close-btn" onclick="clearSavedPosition()" title="Очистить">✕</button>
+    </div>
+
+    <div class="controls">
+        <div id="coverContainer" class="book-cover-preview">
+            <svg class="icon" viewBox="0 0 24 24" style="width:20px; height:20px; fill:#94a3b8;"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>
+        </div>
+
+        <div class="controls-content">
+            <div class="upload-group">
+                <input type="file" id="textFile" accept=".pdf,.epub,.fb2,.txt,.text,.md,.rtf,*/*" style="display:none;" onchange="processTextFile()">
+                <button class="btn" onclick="document.getElementById('textFile').click()">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
+                    Открыть
+                </button>
+                <button class="btn" onclick="startSpeech()">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    Read
+                </button>
+                <button class="btn btn-pause" id="pauseBtn" onclick="togglePause()">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+                <button class="btn btn-stop" onclick="stopSpeech()">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
+                </button>
+                
+                <div class="control-item">
+                    <input type="range" id="speechRate" min="0.3" max="1.5" step="0.05" value="0.85" oninput="changeRate(this.value)" style="width: 45px;">
+                    <span id="rateValue">0.85x</span>
+                </div>
+
+                <div class="control-item">
+                    <select id="bgTheme" onchange="changeTheme(this.value)">
+                        <option value="default">Светлый</option>
+                        <option value="sepia">Сепия</option>
+                        <option value="dark">Тёмный</option>
+                    </select>
+                </div>
+                
+                <button class="btn btn-bg" onclick="document.getElementById('bgImgInput').click()" title="Фоновое изображение">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                </button>
+                <input type="file" id="bgImgInput" accept="image/*" style="display:none;" onchange="loadCustomBg(this)">
+            </div>
+            <div id="status" class="status"></div>
+        </div>
+    </div>
+
+    <!-- Панель выбранного слова -->
+    <div id="wordInfoPanel" class="word-info-panel">
+        <span>🟢 Выбрано: <span class="word-text" id="clickedWordText">—</span></span>
+        <button class="btn-resume" onclick="resumeFromWord()">
+            <svg class="icon" viewBox="0 0 24 24" style="width:14px; height:14px;"><path d="M8 5v14l11-7z"/></svg>
+            Продолжить
+        </button>
+    </div>
+
+    <div id="output">
+        <div class="text-container" id="originalContainer">
+            <h3>Оригинал (EN)</h3>
+            <div id="originalContent"></div>
+        </div>
+        <div class="text-container" id="translatedContainer">
+            <h3>Перевод (RU)</h3>
+            <div id="translatedContent"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    // ===== СОСТОЯНИЕ =====
+    let sentencesEN = [];
+    let sentencesRU = [];
+    let synth = window.speechSynthesis;
+    let utterance = null;
+    let isSpeaking = false;
+    let isTranslating = false;
+    let currentSentenceIndex = 0;
+    let currentFileName = '';
+    let clickedWordData = null; // {sIdx, wIdx}
+    
+    // Оптимизированные структуры данных для быстрого доступа к словам по индексу предложения
+    let wordsBySentenceEN = {}; // {sentenceIdx: [wordElement1, wordElement2, ...]}
+    let wordsBySentenceRU = {}; // {sentenceIdx: [wordElement1, wordElement2, ...]}
+
+    const STORAGE_KEY = 'parallel_reader_position_v2';
+    const delay = ms => new Promise(res => setTimeout(res, ms));
+
+    // ===== ЗАГРУЗКА СОХРАНЁННОЙ ПОЗИЦИИ ПРИ СТАРТЕ =====
+    window.addEventListener('load', () => {
+        loadSavedPosition();
+    });
+
+    // ===== СОХРАНЕНИЕ ПРИ ЗАКРЫТИИ =====
+    window.addEventListener('beforeunload', savePosition);
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) savePosition();
+    });
+
+    function savePosition() {
+        if (currentFileName && sentencesEN.length > 0) {
+            const pos = {
+                fileName: currentFileName,
+                sentenceIndex: currentSentenceIndex,
+                timestamp: Date.now()
+            };
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(pos));
+                flashSaveIndicator();
+            } catch(e) {}
+        }
+    }
+
+    function flashSaveIndicator() {
+        const el = document.getElementById('saveIndicator');
+        el.classList.add('show');
+        setTimeout(() => el.classList.remove('show'), 1500);
+    }
+
+    function loadSavedPosition() {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const pos = JSON.parse(saved);
+                const banner = document.getElementById('savedBanner');
+                document.getElementById('savedFileName').textContent = pos.fileName;
+                const date = new Date(pos.timestamp).toLocaleString('ru');
+                document.getElementById('savedPositionInfo').textContent = 
+                    `Предложение #${pos.sentenceIndex + 1} • ${date}`;
+                banner.classList.add('active');
+            }
+        } catch(e) {}
+    }
+
+    function clearSavedPosition() {
+        localStorage.removeItem(STORAGE_KEY);
+        document.getElementById('savedBanner').classList.remove('active');
+    }
+
+    function resumeFromSavedPosition() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+            if (saved) {
+                // Автоматически открываем диалог выбора файла
+                document.getElementById('textFile').click();
+                updateStatus(`📌 Выберите файл "${saved.fileName}" для продолжения с предложения #${saved.sentenceIndex + 1}`, 'info');
+            }
+        } catch(e) {}
+    }
+
+    // ===== ТЕМЫ =====
+    function changeTheme(theme) {
+        document.body.className = '';
+        document.body.style.backgroundImage = '';
+        if (theme === 'dark') document.body.classList.add('theme-dark');
+        else if (theme === 'sepia') document.body.classList.add('theme-sepia');
+    }
+
+    function loadCustomBg(input) {
+        const file = input.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.body.className = '';
+                document.body.style.backgroundImage = `url('${e.target.result}')`;
+                document.body.style.backgroundSize = 'cover';
+                document.body.style.backgroundAttachment = 'fixed';
+                document.body.style.backgroundPosition = 'center';
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function changeRate(val) {
+        document.getElementById('rateValue').textContent = parseFloat(val).toFixed(2) + 'x';
+        if (isSpeaking && synth.speaking && !synth.paused) {
+            synth.cancel();
+            speakNext();
+        }
+    }
+
+    function resetCover() {
+        document.getElementById('coverContainer').innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="width:20px; height:20px; fill:#94a3b8;"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>';
+    }
+
+    function setCoverImage(url) {
+        document.getElementById('coverContainer').innerHTML = `<img src="${url}" style="width:100%; height:100%; object-fit:cover; border-radius:3px;">`;
+    }
+
+    // ===== ЗАГРУЗКА ФАЙЛА =====
+    async function processTextFile() {
+        if (isTranslating) return;
+
+        const fileInput = document.getElementById('textFile');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            updateStatus('❌ Файл не выбран. Нажмите кнопку "Открыть" и выберите файл.', 'error');
+            return;
+        }
+
+        stopSpeech();
+        resetCover();
+        isTranslating = true;
+        currentFileName = file.name;
+
+        const ext = file.name.split('.').pop().toLowerCase();
+        updateStatus(`📄 Чтение файла: ${file.name} (${(file.size / 1024).toFixed(1)} KB)...`, 'info');
+        
+        console.log('Выбран файл:', file.name, 'Расширение:', ext, 'Размер:', file.size);
+
+        try {
+            let extractedText = '';
+            if (ext === 'pdf') extractedText = await readPdf(file);
+            else if (ext === 'epub') extractedText = await readEpub(file);
+            else if (ext === 'fb2') extractedText = await readFb2(file);
+            else if (ext === 'txt' || ext === 'text' || ext === 'md' || ext === 'rtf') {
+                extractedText = await file.text();
+            } else {
+                // Пробуем прочитать как текст для неизвестных расширений
+                try {
+                    extractedText = await file.text();
+                } catch (e) {
+                    throw new Error(`Неподдерживаемый формат файла: .${ext}. Поддерживаются: PDF, EPUB, FB2, TXT`);
+                }
+            }
+
+            if (!extractedText.trim()) throw new Error('Файл пуст или не содержит текста.');
+
+            // Проверяем сохранённую позицию для этого файла
+            let startIndex = 0;
+            try {
+                const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                if (saved && saved.fileName === file.name) {
+                    startIndex = saved.sentenceIndex;
+                    updateStatus(`📌 Продолжаем с предложения #${startIndex + 1}`, 'info');
+                }
+            } catch(e) {}
+
+            updateStatus(`✅ Текст извлечён (${extractedText.length} символов). Начинаю перевод...`, 'info');
+            await processAndTranslateFull(extractedText, startIndex);
+        } catch (err) {
+            console.error('Ошибка обработки файла:', err);
+            updateStatus(`❌ Ошибка: ${err.message}`, 'error');
+        } finally {
+            isTranslating = false;
+        }
+    }
+
+    async function readPdf(file) {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let text = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            text += content.items.map(item => item.str).join(' ') + ' ';
+        }
+        return text;
+    }
+
+    async function readEpub(file) {
+        const arrayBuffer = await file.arrayBuffer();
+        const book = ePub(arrayBuffer);
+        await book.opened;
+        try {
+            const coverUrl = await book.coverUrl();
+            if (coverUrl) setCoverImage(coverUrl);
+        } catch(e) {}
+
+        let text = '';
+        const loadedSpine = await Promise.all(book.spine.spineItems.map(item => item.load(book.load.bind(book))));
+        loadedSpine.forEach(doc => { text += (doc.textContent || doc.body.innerText || '') + ' '; });
+        return text;
+    }
+
+    async function readFb2(file) {
+        let text = await file.text();
+        const xmlDoc = new DOMParser().parseFromString(text, 'application/xml');
+        try {
+            const coverImage = xmlDoc.querySelector('coverpage image');
+            if (coverImage) {
+                const href = coverImage.getAttribute('l:href') || coverImage.getAttribute('href');
+                const id = href ? href.replace('#', '') : null;
+                if (id) {
+                    const binary = xmlDoc.querySelector(`binary[id="${id}"]`);
+                    if (binary) {
+                        const mime = binary.getAttribute('content-type') || 'image/jpeg';
+                        setCoverImage(`data:${mime};base64,${binary.textContent.trim()}`);
+                    }
+                }
+            }
+        } catch(e) {}
+
+        const body = xmlDoc.querySelector('body');
+        return body ? body.textContent : '';
+    }
+
+    // ===== ПЕРЕВОД =====
+    async function fetchTranslation(text, retries = 3) {
+        if (!text.trim()) return '';
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=${encodeURIComponent(text)}`;
+        
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                const res = await fetch(url);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data[0]) {
+                        return data[0].map(item => item[0]).join('');
+                    }
+                }
+            } catch (e) {
+                if (attempt === retries) return text;
+                await delay(300 * (attempt + 1));
+            }
+        }
+        return text;
+    }
+
+    async function processAndTranslateFull(fullText, startIndex = 0) {
+        const cleanedText = fullText.replace(/\s+/g, ' ').trim();
+        sentencesEN = cleanedText.match(/[^.!?]+[.!?]+/g) || [cleanedText];
+        sentencesRU = new Array(sentencesEN.length).fill('');
+        currentSentenceIndex = startIndex;
+
+        renderBaseText();
+        updateStatus(`Загружено: ${sentencesEN.length} предложений`, 'info');
+
+        let currentBatch = [];
+        let batchIndices = [];
+        let currentBatchLength = 0;
+
+        for (let i = 0; i < sentencesEN.length; i++) {
+            const sentence = sentencesEN[i].trim();
+            currentBatch.push(sentence);
+            batchIndices.push(i);
+            currentBatchLength += sentence.length;
+
+            if (currentBatchLength >= 200 || i === sentencesEN.length - 1) {
+                const combinedText = currentBatch.join(' ||| ');
+                const translatedCombined = await fetchTranslation(combinedText);
+                const splitTranslations = translatedCombined.split('|||');
+                
+                for (let j = 0; j < batchIndices.length; j++) {
+                    const idx = batchIndices[j];
+                    const transSentence = splitTranslations[j] ? splitTranslations[j].trim() : sentencesEN[idx];
+                    sentencesRU[idx] = transSentence;
+                    updateSentenceRU(idx, transSentence);
+                }
+
+                const progress = Math.round(((i + 1) / sentencesEN.length) * 100);
+                updateStatus(`Переведено ${progress}%`, 'info');
+
+                currentBatch = [];
+                batchIndices = [];
+                currentBatchLength = 0;
+                await delay(80);
+            }
+        }
+
+        // Отмечаем прочитанные до startIndex
+        if (startIndex > 0) {
+            for (let i = 0; i < startIndex; i++) {
+                markSentenceAsRead(i);
+            }
+            // Скроллим к текущей позиции
+            setTimeout(() => {
+                const el = document.getElementById(`sent-en-${startIndex}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 200);
+            
+            // Автоматически начинаем чтение с сохранённой позиции через 1 секунду
+            setTimeout(() => {
+                updateStatus(`📌 Позиция восстановлена: предложение #${startIndex + 1}. Начинаю чтение...`, 'success');
+                // Автоматически начинаем чтение
+                startSpeech();
+            }, 1000);
+        } else {
+            updateStatus('✅ Готово! 💡 Одинарный клик — пауза, двойной — продолжить с этого места', 'success');
+        }
+        
+        document.getElementById('savedBanner').classList.remove('active');
+    }
+
+    // ===== РЕНДЕРИНГ =====
+    function renderBaseText() {
+        const origEl = document.getElementById('originalContent');
+        const transEl = document.getElementById('translatedContent');
+        
+        origEl.innerHTML = '';
+        transEl.innerHTML = '';
+        wordsBySentenceEN = {};
+        wordsBySentenceRU = {};
+
+        sentencesEN.forEach((sent, sIdx) => {
+            const sentSpanEN = document.createElement('span');
+            sentSpanEN.className = 'sentence-wrap';
+            sentSpanEN.id = `sent-en-${sIdx}`;
+            
+            wordsBySentenceEN[sIdx] = []; // Инициализируем массив для этого предложения
+            
+            const wordsEN = sent.trim().split(/\s+/);
+            wordsEN.forEach((w, wIdx) => {
+                if (!w.trim()) return;
+                const wordSpan = document.createElement('span');
+                wordSpan.className = 'word';
+                wordSpan.dataset.sidx = sIdx;
+                wordSpan.dataset.widx = wIdx;
+                wordSpan.textContent = w + ' ';
+                // 🟢 ОДИНОЧНЫЙ КЛИК = остановка + зелёная подсветка
+                wordSpan.onclick = (e) => { e.stopPropagation(); onWordClick(sIdx, wIdx); };
+                // ⏩ ДВОЙНОЙ КЛИК = начать чтение с этого слова
+                wordSpan.ondblclick = (e) => { e.stopPropagation(); e.preventDefault(); onWordDoubleClick(sIdx, wIdx); };
+                sentSpanEN.appendChild(wordSpan);
+                wordsBySentenceEN[sIdx].push(wordSpan);
+            });
+            origEl.appendChild(sentSpanEN);
+
+            const sentSpanRU = document.createElement('span');
+            sentSpanRU.className = 'sentence-wrap';
+            sentSpanRU.id = `sent-ru-${sIdx}`;
+            wordsBySentenceRU[sIdx] = []; // Инициализируем массив для этого предложения
+            transEl.appendChild(sentSpanRU);
+        });
+
+        // Поддержка двойного тапа для мобильных устройств
+        setupDoubleTap();
+    }
+
+    // ===== ПОДДЕРЖКА ДВОЙНОГО ТАПА ДЛЯ МОБИЛЬНЫХ =====
+    function setupDoubleTap() {
+        let lastTapTime = 0;
+        let lastTapTarget = null;
+        const DOUBLE_TAP_DELAY = 300; // мс между тапами
+
+        document.getElementById('originalContent').addEventListener('touchend', (e) => {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTapTime;
+            const target = e.target;
+
+            if (target.classList.contains('word') && lastTapTarget === target && tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
+                // Двойной тап обнаружен
+                e.preventDefault();
+                const sIdx = parseInt(target.dataset.sidx);
+                const wIdx = parseInt(target.dataset.widx);
+                onWordDoubleClick(sIdx, wIdx);
+                lastTapTime = 0;
+                lastTapTarget = null;
+            } else {
+                lastTapTime = currentTime;
+                lastTapTarget = target;
+            }
+        });
+    }
+
+    function updateSentenceRU(sIdx, textRU) {
+        const sentSpanRU = document.getElementById(`sent-ru-${sIdx}`);
+        if (!sentSpanRU) return;
+        
+        sentSpanRU.innerHTML = '';
+        wordsBySentenceRU[sIdx] = []; // Инициализируем массив для этого предложения
+        const wordsRU = textRU.trim().split(/\s+/);
+        
+        wordsRU.forEach((w, wIdx) => {
+            if (!w.trim()) return;
+            const wordSpan = document.createElement('span');
+            wordSpan.className = 'word';
+            wordSpan.dataset.sidx = sIdx;
+            wordSpan.dataset.widx = wIdx;
+            wordSpan.textContent = w + ' ';
+            
+            if (sIdx < currentSentenceIndex) {
+                wordSpan.classList.add('read');
+            }
+            
+            sentSpanRU.appendChild(wordSpan);
+            wordsBySentenceRU[sIdx].push(wordSpan);
+        });
+    }
+
+    // ===== 🟢 КЛИК ПО СЛОВУ: ОСТАНОВКА + ЗЕЛЁНАЯ ПОДСВЕТКА =====
+    function onWordClick(sIdx, wIdx) {
+        // 1. Остановить чтение (не помечать текущее предложение как прочитанное)
+        stopSpeech(false);
+
+        // 2. Убрать предыдущую зелёную подсветку
+        document.querySelectorAll('.word.clicked').forEach(el => el.classList.remove('clicked'));
+
+        // 3. Убрать active со всех слов
+        document.querySelectorAll('.word.active').forEach(el => el.classList.remove('active'));
+
+        // 💛 Убрать заливку со всех слов (быстрая операция через querySelectorAll)
+        document.querySelectorAll('.word.read').forEach(el => el.classList.remove('read'));
+
+        // 4. Пометить все предложения до sIdx как прочитанные (с заливкой)
+        for (let i = 0; i < sIdx; i++) {
+            markSentenceAsRead(i);
+        }
+
+        // 5. Подсветить нажатое слово в EN зелёным
+        const enWords = wordsBySentenceEN[sIdx] || [];
+        const enWord = enWords[wIdx];
+        if (enWord) {
+            enWord.classList.add('clicked');
+            enWord.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // 6. Подсветить соответствующее слово в RU зелёным
+        const ruWords = wordsBySentenceRU[sIdx] || [];
+        if (ruWords.length > 0) {
+            const ratio = enWords.length > 1 ? wIdx / (enWords.length - 1) : 0;
+            const ruIdx = Math.min(Math.round(ratio * (ruWords.length - 1)), ruWords.length - 1);
+            ruWords[ruIdx].classList.add('clicked');
+            ruWords[ruIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // 7. Сохранить данные о выбранном слове
+        clickedWordData = { sIdx, wIdx };
+        currentSentenceIndex = sIdx;
+
+        // 8. Показать инфо-панель
+        const wordText = sentencesEN[sIdx]?.trim().split(/\s+/)[wIdx] || '—';
+        document.getElementById('clickedWordText').textContent = `"${wordText}" (предложение ${sIdx + 1})`;
+        document.getElementById('wordInfoPanel').classList.add('active');
+
+        // 9. Сохранить позицию
+        savePosition();
+        updateStatus(`⏹ Остановлено на слове: "${wordText}"`, 'info');
+    }
+
+    // ===== ⏩ ДВОЙНОЙ КЛИК: НАЧАТЬ ЧТЕНИЕ С ЭТОГО СЛОВА =====
+    function onWordDoubleClick(sIdx, wIdx) {
+        // 1. Остановить текущее чтение (не помечать текущее предложение как прочитанное)
+        stopSpeech(false);
+
+        // 2. Убрать зелёную подсветку (если была)
+        document.querySelectorAll('.word.clicked').forEach(el => el.classList.remove('clicked'));
+        document.getElementById('wordInfoPanel').classList.remove('active');
+        clickedWordData = null;
+
+        // 3. Убрать заливку со всех слов (быстрая операция)
+        document.querySelectorAll('.word.read').forEach(el => el.classList.remove('read'));
+
+        // 4. Залить все предложения до sIdx (пометить как прочитанные)
+        for (let i = 0; i < sIdx; i++) {
+            markSentenceAsRead(i);
+        }
+
+        // 5. Установить текущую позицию
+        currentSentenceIndex = sIdx;
+
+        // 6. Скроллить к этому предложению
+        const enWords = wordsBySentenceEN[sIdx] || [];
+        const targetWord = enWords[wIdx];
+        if (targetWord) {
+            targetWord.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // 7. Начать чтение с этого предложения (слова будут заливаться динамически)
+        isSpeaking = true;
+        speakNext();
+
+        // 8. Сохранить позицию
+        savePosition();
+
+        const wordText = sentencesEN[sIdx]?.trim().split(/\s+/)[wIdx] || '—';
+        updateStatus(`⏩ Чтение начато со слова: "${wordText}" (предложение ${sIdx + 1})`, 'success');
+    }
+
+    // ===== ПРОДОЛЖИТЬ ЧТЕНИЕ ПОСЛЕ КЛИКА =====
+    function resumeFromWord() {
+        // Убираем зелёную подсветку
+        document.querySelectorAll('.word.clicked').forEach(el => el.classList.remove('clicked'));
+        document.getElementById('wordInfoPanel').classList.remove('active');
+        clickedWordData = null;
+        
+        // Убираем заливку с текущего предложения (оно будет заливаться динамически)
+        if (currentSentenceIndex < sentencesEN.length) {
+            const enWords = wordsBySentenceEN[currentSentenceIndex] || [];
+            const ruWords = wordsBySentenceRU[currentSentenceIndex] || [];
+            for (let i = 0; i < enWords.length; i++) {
+                enWords[i].classList.remove('read');
+            }
+            for (let i = 0; i < ruWords.length; i++) {
+                ruWords[i].classList.remove('read');
+            }
+        }
+        
+        // Продолжаем чтение с текущей позиции
+        isSpeaking = true;
+        speakNext();
+    }
+
+    // ===== ОЗВУЧИВАНИЕ =====
+    function startSpeech() {
+        if (sentencesEN.length === 0) {
+            updateStatus('Сначала откройте файл.', 'error');
+            return;
+        }
+
+        if (synth.paused) {
+            synth.resume();
+            return;
+        }
+
+        // Останавливаем текущее чтение
+        stopSpeech(false);
+        
+        // Убираем зелёную подсветку
+        document.querySelectorAll('.word.clicked').forEach(el => el.classList.remove('clicked'));
+        document.getElementById('wordInfoPanel').classList.remove('active');
+        clickedWordData = null;
+
+        // Убираем заливку с текущего предложения (оно будет заливаться динамически)
+        if (currentSentenceIndex < sentencesEN.length) {
+            const enWords = wordsBySentenceEN[currentSentenceIndex] || [];
+            const ruWords = wordsBySentenceRU[currentSentenceIndex] || [];
+            for (let i = 0; i < enWords.length; i++) {
+                enWords[i].classList.remove('read');
+            }
+            for (let i = 0; i < ruWords.length; i++) {
+                ruWords[i].classList.remove('read');
+            }
+            
+            // Скроллим к текущей позиции чтения
+            const targetSentence = document.getElementById(`sent-en-${currentSentenceIndex}`);
+            if (targetSentence) {
+                targetSentence.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        // Начинаем чтение с currentSentenceIndex (сохранённой позиции)
+        isSpeaking = true;
+        speakNext();
+        
+        updateStatus(`▶ Чтение начато с предложения #${currentSentenceIndex + 1}`, 'success');
+    }
+
+    function speakNext() {
+        if (currentSentenceIndex >= sentencesEN.length || !isSpeaking) {
+            stopSpeech(false);
+            updateStatus('✅ Чтение завершено.', 'success');
+            return;
+        }
+
+        const textToRead = sentencesEN[currentSentenceIndex];
+        utterance = new SpeechSynthesisUtterance(textToRead);
+        utterance.lang = 'en-US';
+        utterance.rate = parseFloat(document.getElementById('speechRate').value);
+
+        utterance.onboundary = (event) => {
+            if (event.name === 'word') {
+                highlightWordsAccurately(currentSentenceIndex, event.charIndex);
+            }
+        };
+
+        utterance.onend = () => {
+            markSentenceAsRead(currentSentenceIndex);
+            currentSentenceIndex++;
+            savePosition(); // 💾 Сохраняем после каждого предложения
+            speakNext();
+        };
+
+        utterance.onerror = () => {
+            currentSentenceIndex++;
+            speakNext();
+        };
+
+        synth.speak(utterance);
+    }
+
+    function togglePause() {
+        if (!isSpeaking) return;
+
+        if (synth.speaking && !synth.paused) {
+            synth.pause();
+            savePosition(); // 💾 Сохраняем при паузе
+            updateStatus('Пауза', 'info');
+        } else if (synth.paused) {
+            synth.resume();
+            updateStatus('Воспроизведение...', 'success');
+        }
+    }
+
+    function highlightWordsAccurately(sentenceIdx, charIndex) {
+        // Быстрый доступ к словам предложения через оптимизированную структуру
+        const currentWordsEN = wordsBySentenceEN[sentenceIdx] || [];
+        if (currentWordsEN.length === 0) return;
+
+        let accumulatedLength = 0;
+        let wordIndex = -1;
+
+        for (let i = 0; i < currentWordsEN.length; i++) {
+            const el = currentWordsEN[i];
+            const wordLen = el.textContent.length;
+            if (charIndex >= accumulatedLength && charIndex < accumulatedLength + wordLen) {
+                wordIndex = i;
+                break;
+            }
+            accumulatedLength += wordLen;
+        }
+
+        if (wordIndex !== -1) {
+            // Убираем active со всех слов предложения
+            for (let i = 0; i < currentWordsEN.length; i++) {
+                currentWordsEN[i].classList.remove('active');
+            }
+
+            // Зачёркиваем все слова до текущего (включая его)
+            for (let i = 0; i <= wordIndex; i++) {
+                currentWordsEN[i].classList.add('read');
+            }
+            
+            // Подсвечиваем текущее слово активным (ярко-жёлтым)
+            currentWordsEN[wordIndex].classList.add('active');
+            currentWordsEN[wordIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Синхронизируем с русским текстом
+            const currentWordsRU = wordsBySentenceRU[sentenceIdx] || [];
+            if (currentWordsRU.length > 0) {
+                for (let i = 0; i < currentWordsRU.length; i++) {
+                    currentWordsRU[i].classList.remove('active');
+                }
+                
+                // Пропорциональное сопоставление слов
+                let ruWordIndex = Math.floor((wordIndex / Math.max(1, currentWordsEN.length - 1)) * (currentWordsRU.length - 1));
+                ruWordIndex = Math.min(Math.max(0, ruWordIndex), currentWordsRU.length - 1);
+
+                // Зачёркиваем русские слова до текущего
+                for (let i = 0; i <= ruWordIndex; i++) {
+                    currentWordsRU[i].classList.add('read');
+                }
+                
+                // Подсвечиваем текущее русское слово
+                currentWordsRU[ruWordIndex].classList.add('active');
+                currentWordsRU[ruWordIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }
+
+    function markSentenceAsRead(sentenceIdx) {
+        // Быстрый доступ к словам предложения через оптимизированную структуру
+        const enWords = wordsBySentenceEN[sentenceIdx] || [];
+        const ruWords = wordsBySentenceRU[sentenceIdx] || [];
+        
+        // Зачёркиваем все слова предложения
+        for (let i = 0; i < enWords.length; i++) {
+            enWords[i].classList.remove('active');
+            enWords[i].classList.add('read');
+        }
+        for (let i = 0; i < ruWords.length; i++) {
+            ruWords[i].classList.remove('active');
+            ruWords[i].classList.add('read');
+        }
+    }
+
+    function stopSpeech(markCurrentAsRead = true) {
+        const wasSpeaking = isSpeaking;
+        isSpeaking = false;
+        if (synth.speaking || synth.paused) {
+            synth.cancel();
+        }
+        
+        // Убираем active только с текущего предложения (быстрее чем querySelectorAll)
+        if (currentSentenceIndex < sentencesEN.length) {
+            const enWords = wordsBySentenceEN[currentSentenceIndex] || [];
+            const ruWords = wordsBySentenceRU[currentSentenceIndex] || [];
+            for (let i = 0; i < enWords.length; i++) {
+                enWords[i].classList.remove('active');
+            }
+            for (let i = 0; i < ruWords.length; i++) {
+                ruWords[i].classList.remove('active');
+            }
+        }
+        
+        // 💛 Если мы слушали текст, помечаем текущее предложение как прочитанное
+        if (markCurrentAsRead && wasSpeaking && currentSentenceIndex < sentencesEN.length) {
+            markSentenceAsRead(currentSentenceIndex);
+        }
+        
+        savePosition(); // 💾 Сохраняем позицию при остановке
+    }
+
+    function updateStatus(message, type) {
+        const statusDiv = document.getElementById('status');
+        statusDiv.textContent = message;
+        statusDiv.className = `status ${type}`;
+    }
+</script>
+</body>
+</html>
